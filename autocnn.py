@@ -127,7 +127,7 @@ with open(MODELS_DIR + 'hist1.pickle', 'rb') as f:
 labelNames = ["airplane", "bird", "car", "cat", "deer",
  "dog", "horse", "monkey", "ship", "truck"]
 
-final_predictions = stl10.decode_predictions(model_final.predict(x_test),labelNames)
+final_predictions = utils.decode_predictions(model_final.predict(x_test),labelNames)
 for i in range(0,50):
 	x = list(y_test[i]).index(True)
 	print("predicted " + final_predictions[i][0] + " " + final_predictions[i][1] + " " + final_predictions[i][2] + " actual " + labelNames[list(y_test[i]).index(True)])

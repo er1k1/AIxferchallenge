@@ -10,6 +10,7 @@ from keras.callbacks import TensorBoard
 from dataset import stl10_input as stl10
 import h5py
 import pickle
+from utils import utils
 
 AUTOENC_WEIGHTS= './output/models/stl10_autoenc_weights.hdf5'
 AUTOENC_ARCH = './output/models/stl10_autoenc_arch.json'
@@ -65,7 +66,7 @@ y_test = lb.fit_transform(testY)
 if os.path.exists(MODEL_WEIGHTS): 
 	model_final.load_weights(MODEL_WEIGHTS, by_name = True)
 	with open(MODELS_DIR + 'history.pickle', 'rb') as f:
-		history = pickle.load(f)
+		model_history = pickle.load(f)
 else:
 	# train or preload the autoencoded weights
 	if not os.path.exists(AUTOENC_WEIGHTS):  
@@ -76,7 +77,12 @@ else:
                	batch_size=128,
                 	shuffle=True
                	)
+		
+		# free some memory
 		del x_unlabeled
+		# keep decoded autoencoded images for examination
+		decoded_imgs = autoencoder.predict(x_test)
+
 		model_final.set_weights(autoencoder.get_weights())
 		# serialize weights to HDF5
 		autoencoder.save_weights(AUTOENC_WEIGHTS, overwrite=True)
@@ -86,6 +92,7 @@ else:
 			pickle.dump(hist1.history, f)
 	else:
 		model_final.load_weights(AUTOENC_WEIGHTS, by_name = True)
+	#
 	# set up the final supervised model with the preinitialised weights 
 	for layer in model_final.layers[:-7]:
 		layer.trainable = False
@@ -100,6 +107,7 @@ else:
                 	batch_size=128,
                 	shuffle=True,
                 	validation_data=(x_test, y_test))
+	model_history = history.history
 	# free some memory
 	del x_train
 	# serialize model history
@@ -113,56 +121,37 @@ else:
 	model_final.save_weights(MODEL_WEIGHTS)
 	print("Saved model to disk")
 
+with open(MODELS_DIR + 'hist1.pickle', 'rb') as f:
+	autoenc_history = pickle.load(f)
+
 labelNames = ["airplane", "bird", "car", "cat", "deer",
  "dog", "horse", "monkey", "ship", "truck"]
 
-decoded_imgs = autoencoder.predict(x_test)
 final_predictions = stl10.decode_predictions(model_final.predict(x_test),labelNames)
 for i in range(0,50):
 	x = list(y_test[i]).index(True)
 	print("predicted " + final_predictions[i][0] + " " + final_predictions[i][1] + " " + final_predictions[i][2] + " actual " + labelNames[list(y_test[i]).index(True)])
 
-# Loss Curves
-plt.figure(figsize=[8,6])
-plt.plot(history.history['loss'],'r',linewidth=3.0)
-plt.plot(history.history['val_loss'],'b',linewidth=3.0)
-plt.legend(['Training loss', 'Validation Loss'],fontsize=18)
-plt.xlabel('Epochs ',fontsize=16)
-plt.ylabel('Loss',fontsize=16)
-plt.title('Loss Curves',fontsize=16)
+# plot loss curves
+utils.plot_loss(model_history)
+utils.plot_loss(autoenc_history)
 
-# Accuracy Curves
-plt.figure(figsize=[8,6])
-plt.plot(history.history['acc'],'r',linewidth=3.0)
-plt.plot(history.history['val_acc'],'b',linewidth=3.0)
-plt.legend(['Training Accuracy', 'Validation Accuracy'],fontsize=18)
-plt.xlabel('Epochs ',fontsize=16)
-plt.ylabel('Accuracy',fontsize=16)
-plt.title('Accuracy Curves',fontsize=16)
+# display decoded autoencode images if first autoencode training
+if 'decoded_imgs' in globals():
+	n = 10
+	plt.figure(figsize=(20, 4))
+	for i in range(1, n):
+        		# display original
+        		ax = plt.subplot(2, n, i)
+        		plt.imshow(x_test[i].reshape(96,96,3))
+        		#plt.gray()
+        		ax.get_xaxis().set_visible(False)
+        		ax.get_yaxis().set_visible(False)
+        		# display reconstruction
+        		ax = plt.subplot(2, n, i + n)
+        		plt.imshow(decoded_imgs[i].reshape(96,96,3))
+        		#plt.gray()
+        		ax.get_xaxis().set_visible(False)
+        		ax.get_yaxis().set_visible(False)
 
-n = 10
-plt.figure(figsize=(20, 4))
-for i in range(1, n):
-        # display original
-        ax = plt.subplot(2, n, i)
-        plt.imshow(x_test[i].reshape(96,96,3))
-        #plt.gray()
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        # display reconstruction
-        ax = plt.subplot(2, n, i + n)
-        plt.imshow(decoded_imgs[i].reshape(96,96,3))
-        #plt.gray()
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-
-plt.show()
-n = 10
-plt.figure(figsize=(20, 8))
-for i in range(n):
-ax = plt.subplot(1, n, i)
-    plt.imshow(encoded_imgs[i].reshape(4, 4 * 8).T)
-    plt.gray()
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-plt.show()
+	plt.show()

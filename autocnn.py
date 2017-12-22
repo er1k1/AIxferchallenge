@@ -33,7 +33,7 @@ x = Conv2D(16, (3, 3), activation='relu', padding='same')(x)
 #x = Conv2D(8, (3, 3), activation='relu', padding='same')(x)
 encoded = MaxPooling2D((2, 2), padding='same')(x)
 
-# at this point the representation is (24,24, 8) i.e. 4608-dimensional
+# at this point the representation is (24,24, 16) i.e. 9216-dimensional
 
 x = Conv2D(16, (3, 3), activation='relu', padding='same')(encoded)
 x = UpSampling2D((2, 2))(x)
